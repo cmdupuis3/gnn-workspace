@@ -1,14 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import xarray as xr
 import networkx as nx
-
-from dataclasses import dataclass
-from typing import Iterable
-from itertools import product
-from intake import open_catalog
-
-# Need a cruft check on these
 
 import torch
 import torch.nn as nn
@@ -17,20 +9,21 @@ import torch_geometric
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import add_self_loops, degree
 from torch.nn import Sequential as Seq, Linear, ReLU
-
 from torch_geometric.utils.convert import to_networkx, from_networkx
 
 import xbatcher as xb
 
 from surface_currents_prep import *
-from scenario import Scenario, sc5
-######
+from scenario import Scenario
 
+sc1 = Scenario(['SSH'],             ['TAUX', 'TAUY'], ['U', 'V'], name = "derp")
+sc5 = Scenario(['SSH', 'SST'], ['X', 'TAUX', 'TAUY'], ['U', 'V'], name = "herp")
+
+###############################################
 
 ds_training = load_training_data(sc5)
 ds_training = just_the_data(ds_training)
 ds_training = select_from(ds_training)
-
 
 
 def point_to_graph(mask, i, j, imax, jmax, weight=1.0):
@@ -105,7 +98,7 @@ def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=1):
     return batch
 
 
-batch = rolling_batcher(ds_training, 15, 15)
+batch = rolling_batcher(ds_training, 11, 11)
 batch2 = batch[{'input_batch':0}]
 
 
@@ -189,7 +182,7 @@ def batch_generator(bgen, batch_size):
     n = 0
     feats = list()
     targs = list()
-    while n < 10:
+    while n < 6:
         batch = [next(b) for i in range(batch_size)]
         feats = [batch[i][0] for i in range(batch_size)]
         targs = [batch[i][1] for i in range(batch_size)]
@@ -206,7 +199,7 @@ bgen = batch_generator(ggen_subgs(batch, kernel), 1024)
 
 # pr = cProfile.Profile()
 # pr.enable()
-f, t = next(bgen)
+# f, t = next(bgen)
 # pr.disable()
 # pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
 
@@ -216,7 +209,7 @@ class MPD_in(MessagePassing):
         super().__init__(aggr='add')
         self.lin_1 = Linear(in_channels, out_channels)
         self.lin_2 = Linear(in_channels, out_channels)
-        self.mlp = Seq(Linear(2 * in_channels + 2, message_channels),
+        self.mlp = Seq(Linear(2 * in_channels, message_channels),
                        ReLU(),
                        Linear(message_channels, in_channels))
 
@@ -231,11 +224,11 @@ class MPD_in(MessagePassing):
 
 class MsgModelDiff(torch.nn.Module):
 
-    def __init__(self, num_in = 1, num_out = 1, num_hidden = 30, num_message = 200):
+    def __init__(self, num_in = 1, num_out = 1, num_message = 200):
         super().__init__()
-        self.layer_diff = MPD_in(num_in,num_hidden,num_message)
-        self.layer_h = MPD_in(num_hidden,num_hidden,num_message)
-        self.layer_out = MPD_in(num_hidden,num_out,num_message)
+        self.layer_diff = MPD_in(num_in,20,num_message)
+        self.layer_h = MPD_in(20,20,num_message)
+        self.layer_out = MPD_in(20,num_out,num_message)
         self.relu = torch.nn.ReLU()
 
     def forward(self, features, edges, weights):
@@ -256,7 +249,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 
 class GCN(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
         self.conv1 = GCNConv(in_channels, 20)
         self.conv2 = GCNConv(20, 20)
@@ -297,7 +290,9 @@ def train(model, num_epochs=1, batch_size=32):
         print(f'[Loss: {loss}')
 
 
-model = MsgModelDiff(num_in=2, num_hidden=40, num_message=100)
-model2 = GCN(5, 2, 2) # BUG CHECK: Does this work for the right reason?
 
-train(model2, num_epochs=20, batch_size=64)
+if __name__ == '__main__':
+    model = MsgModelDiff(num_in=5, num_out=2, num_message=100)
+    model2 = GCN(5, 2)
+
+    train(model, num_epochs=20, batch_size=256)
