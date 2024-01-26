@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from torch_geometric.utils.convert import to_networkx, from_networkx
 
+from matplotlib import pyplot as plt
+
 from surface_currents_prep import *
 from scenario              import Scenario
 from models                import GCN, MsgModelDiff
@@ -21,6 +23,9 @@ ds_training = load_training_data(sc5)
 ds_training = just_the_data(ds_training)
 ds_training = select_from(ds_training)
 
+ds_testing = load_test_data(sc5)
+ds_testing = just_the_data(ds_testing)
+ds_testing = select_from(ds_testing)
 
 def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=1):
 
@@ -45,8 +50,8 @@ def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=1):
     return batch
 
 
-batch = rolling_batcher(ds_training, 9, 9)
-batch2 = batch[{'input_batch':0}]
+training_batch = rolling_batcher(ds_training, 9, 9)
+testing_batch  = rolling_batcher(ds_testing,  9, 9)
 
 ###############################################
 
@@ -72,16 +77,13 @@ def batch_generator(batch, kernel, batch_size):
     n = 0
     feats = list()
     targs = list()
-    while n < 30:
+    while n < 58:
         batch = [next(b) for i in range(batch_size)]
         feats = [batch[i][0] for i in range(batch_size)]
         targs = [batch[i][1] for i in range(batch_size)]
 
         yield feats, targs
         n += 1
-
-ggen = ggen_subgs(batch, kernel)
-bgen = batch_generator(batch, kernel, 1024)
 
 # import snakeviz, cProfile
 # %load_ext snakeviz
@@ -93,13 +95,14 @@ bgen = batch_generator(batch, kernel, 1024)
 # pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
 
 
-def train(model, num_epochs=1, batch_size=32):
+def train(model, num_epochs=1, batch_size=32, plot_loss=False):
     # Set up the loss and the optimizer
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
 
+    testing_loss = []
     for epoch in range(num_epochs):
-        for f, t in batch_generator(batch, kernel, batch_size):
+        for f, t in batch_generator(training_batch, kernel, batch_size):
             for features, targets in zip(f, t):
 
                 optimizer.zero_grad()
@@ -107,9 +110,19 @@ def train(model, num_epochs=1, batch_size=32):
                 loss = loss_fn(outs, targets.x)
                 loss.backward()
                 optimizer.step()
-            # print(f'[Batch Loss: {loss}')
 
-        print(f'[\tEpoch Loss: {loss}')
+        for f, t in batch_generator(testing_batch, kernel, batch_size):
+            for features, targets in zip(f, t):
+
+                outs = model(features.x.float(), features.edge_index, features.weight)
+                loss_temp = loss_fn(outs, targets.x)
+
+        if(plot_loss):
+            # clear_output(wait=True) # Only need for Jupyter notebooks
+            plt.figure(figsize=(18, 5))
+
+        testing_loss.append(loss_temp.item())
+        print(f'[\tEpoch Loss:\n {testing_loss}')
 
 ###############################################
 
@@ -117,12 +130,12 @@ if __name__ == '__main__':
     model = MsgModelDiff(num_in=5, num_out=2, num_message=100)
     model2 = GCN(5, 2)
 
-    # train(model, num_epochs=20, batch_size=64)
+    # train(model, num_epochs=30, batch_size=32)
 
-    # import snakeviz, cProfile
-    #
-    # pr = cProfile.Profile()
-    # pr.enable()
+    import snakeviz, cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     train(model, num_epochs=2, batch_size=64)
-    # pr.disable()
-    # pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
+    pr.disable()
+    pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")

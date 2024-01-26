@@ -3,7 +3,9 @@ import numpy as np
 import networkx as nx
 import xarray as xr
 
-def _point_to_graph(mask, i, j, imax, jmax, weight=1.0):
+from preconvolve import *
+
+def _point_to_graph(mask: np.ndarray, i: int, j: int, imax: int, jmax: int, weight: float =1.0):
     edges = []
 
     if not (j == jmax):
@@ -56,15 +58,13 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
     jmax = mask.shape[1] - 1
 
     vars_graph = nx.Graph()
-    # TODO: can we use fancy indexing to avoid these loops
-    for i in range(0, imax + 1):
-        for j in range(0, jmax + 1):
+
+    for j in range(0, jmax + 1):
+        for i in range(0, imax + 1):
             if mask[i, j]:
                 edges = _point_to_graph(mask, i, j, imax, jmax)
-                # vars_ij = {x:vars[x][i,j] for x in names} #vars[x][i,j].to_numpy()
                 # TODO: double check c vs. fortran indexing conventions
                 vars_sub = vars[names].isel(nlon=i, nlat=j)
-                # vars_sub is an xarray dataset; it has the names in it already
                 node_data = {vname: vars_sub[vname].values.item() for vname in vars_sub}
                 vars_graph.add_node((i, j), **node_data)
                 vars_graph.add_weighted_edges_from(edges, )
@@ -77,23 +77,17 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
 
 def _xr_ds_to_graph(batch, sc, kernel):
     batch.load()
-    mask = batch['mask'].values
+    mask = batch['mask']
 
-    # convolve and contract here
     # conv_f   = convolve(batch[sc.conv_var],  mask, kernel)
     # features = contract(batch[sc.input_var], mask, 1)
     # targets  = contract(batch[sc.target],    mask, 1)
     # mask     = contract(batch[['mask']],     mask, 1)['mask'] # silly, but it works
+    #
+    # features = xr.merge([features, conv_f])
 
-    # if we don't want an initial convolution...
-    # conv_f   = {v:batch[v].to_numpy() for v in sc.conv_var}
-    # features = {v:batch[v].to_numpy() for v in sc.input_var}
-    # targets  = {v:batch[v].to_numpy() for v in sc.target}
-
-    # features = features | conv_f
-
-    features_graph = _graph_builder(mask, batch, sc.conv_var + sc.input_var)
-    targets_graph = _graph_builder(mask, batch, sc.target)
+    features_graph = _graph_builder(mask.values, batch, sc.conv_var + sc.input_var)
+    targets_graph = _graph_builder(mask.values, batch, sc.target)
 
     return features_graph, targets_graph
 
