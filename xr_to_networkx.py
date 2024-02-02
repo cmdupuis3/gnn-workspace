@@ -4,6 +4,7 @@ import networkx as nx
 import xarray as xr
 
 from preconvolve import *
+from scenario import Scenario
 
 def _point_to_graph(mask: np.ndarray, i: int, j: int, imax: int, jmax: int, weight: float =1.0):
     edges = []
@@ -96,3 +97,31 @@ def xr_to_graphs(batch, sc, kernel):
     fsub = [f.subgraph(sub) for sub in nx.connected_components(f)]
     tsub = [t.subgraph(sub) for sub in nx.connected_components(t)]
     return fsub, tsub
+
+def _graphs_to_array(ds: xr.Dataset, var_name: str, graphs):
+    '''
+    Converts an iterable of networkx graphs into a single xarray DataArray
+    '''
+
+    new_array = xr.full_like(ds[var_name], np.nan)
+
+    for graph in graphs:
+        for k, v in list(graph.nodes(data=True)):
+            # k is the "name", i.e. the original xarray coordinates
+            print(k)
+
+
+
+
+
+def graphs_to_xr(ds: xr.Dataset, sc: Scenario, graphs):
+
+    var_names = sc.conv_var | sc.features | sc.targets
+
+    ds_out = xr.Dataset(
+        data_vars = {k: _graphs_to_array(ds, k, graphs) for k in var_names},
+        coords = ds.coords,
+        # attrs = # Probably don't want to copy paste
+    )
+
+    return ds_out
