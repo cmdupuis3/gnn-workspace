@@ -63,26 +63,29 @@ kernel = xr.DataArray([[0,  1, 0],
 def ggen_subgs(batch_set, kernel):
     for i in range(len(batch_set['input_batch'])):
         batch = batch_set[{'input_batch':i}]
-        fsub, tsub = xr_to_graphs(batch, sc5, kernel)
+        csub, fsub, tsub = xr_to_graphs(batch, sc5, kernel)
 
         for j in range(len(fsub)):
-            fpy = from_networkx(fsub[j], group_node_attrs = sc5.conv_var + sc5.input_var)
+            cpy = from_networkx(csub[j], group_node_attrs = sc5.conv_var)
+            fpy = from_networkx(fsub[j], group_node_attrs = sc5.input_var)
             tpy = from_networkx(tsub[j], group_node_attrs = sc5.target)
-            yield (fpy, tpy)
+            yield (cpy, fpy, tpy)
 
 
 def batch_generator(batch, kernel, batch_size):
     bgen = ggen_subgs(batch, kernel)
     b = (batch for batch in bgen)
     n = 0
+    convs = list()
     feats = list()
     targs = list()
     while n < 58:
         batch = [next(b) for i in range(batch_size)]
-        feats = [batch[i][0] for i in range(batch_size)]
-        targs = [batch[i][1] for i in range(batch_size)]
+        convs = [batch[i][0] for i in range(batch_size)]
+        feats = [batch[i][1] for i in range(batch_size)]
+        targs = [batch[i][2] for i in range(batch_size)]
 
-        yield feats, targs
+        yield convs, feats, targs
         n += 1
 
 # import snakeviz, cProfile
@@ -102,27 +105,25 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
 
     testing_loss = []
     for epoch in range(num_epochs):
-        for f, t in batch_generator(training_batch, kernel, batch_size):
-            for features, targets in zip(f, t):
+        for c, f, t in batch_generator(training_batch, kernel, batch_size):
+            for convs, features, targets in zip(c, f, t):
 
                 optimizer.zero_grad()
-                outs = model(features.x.float(), features.edge_index, features.weight)
+                outs = model(convs.x.float(), features.x.float(), features.edge_index, features.weight)
                 loss = loss_fn(outs, targets.x)
                 loss.backward()
                 optimizer.step()
 
-        for f, t in batch_generator(testing_batch, kernel, batch_size):
-            for features, targets in zip(f, t):
+        for c, f, t in batch_generator(testing_batch, kernel, batch_size):
+            for convs, features, targets in zip(c, f, t):
 
-                outs = model(features.x.float(), features.edge_index, features.weight)
+                outs = model(convs.x.float(),features.x.float(), features.edge_index, features.weight)
                 loss_temp = loss_fn(outs, targets.x)
 
         print(f'[\tEpoch Loss:\n {loss_temp}')
         testing_loss.append(loss_temp.item())
 
     if(plot_loss):
-        # clear_output(wait=True) # Only need for Jupyter notebooks
-
         plt.figure(figsize=(18, 5))
         plt.plot(range(num_epochs), testing_loss, color='#ff6347', label="loss")
         plt.plot(epoch, testing_loss[-1], marker = 'o', markersize=10, color='#ff6347')
@@ -136,8 +137,7 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
 ###############################################
 
 if __name__ == '__main__':
-    model = MsgModelDiff(5, [80,40,20,10], 2, num_message=100)
-    model2 = GCN(5, 2)
+    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=80, num_message=100)
 
     train(model, num_epochs=30, batch_size=32, plot_loss=True)
 

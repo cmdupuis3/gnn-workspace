@@ -87,16 +87,18 @@ def _xr_ds_to_graph(batch, sc, kernel):
     #
     # features = xr.merge([features, conv_f])
 
-    features_graph = _graph_builder(mask.values, batch, sc.conv_var + sc.input_var)
-    targets_graph = _graph_builder(mask.values, batch, sc.target)
+    conv_f_graph   = _graph_builder(mask.values, batch, sc.conv_var)
+    features_graph = _graph_builder(mask.values, batch, sc.input_var)
+    targets_graph  = _graph_builder(mask.values, batch, sc.target)
 
-    return features_graph, targets_graph
+    return conv_f_graph, features_graph, targets_graph
 
 def xr_to_graphs(batch, sc, kernel):
-    f, t = _xr_ds_to_graph(batch, sc, kernel)
+    c, f, t = _xr_ds_to_graph(batch, sc, kernel)
+    csub = [c.subgraph(sub) for sub in nx.connected_components(c)]
     fsub = [f.subgraph(sub) for sub in nx.connected_components(f)]
     tsub = [t.subgraph(sub) for sub in nx.connected_components(t)]
-    return fsub, tsub
+    return csub, fsub, tsub
 
 def _graphs_to_array(ds: xr.Dataset, var_name: str, graphs):
     '''
