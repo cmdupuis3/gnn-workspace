@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.utils.convert import to_networkx, from_networkx
 
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
 from scenario              import Scenario
@@ -117,11 +117,20 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
                 outs = model(features.x.float(), features.edge_index, features.weight)
                 loss_temp = loss_fn(outs, targets.x)
 
-        if(plot_loss):
-            # clear_output(wait=True) # Only need for Jupyter notebooks
-            plt.figure(figsize=(18, 5))
-
         testing_loss.append(loss_temp.item())
+
+    if(plot_loss):
+        # clear_output(wait=True) # Only need for Jupyter notebooks
+
+        plt.figure(figsize=(18, 5))
+        plt.plot(range(num_epochs), testing_loss, color='#ff6347', label="loss")
+        plt.plot(epoch, testing_loss[-1], marker = 'o', markersize=10, color='#ff6347')
+        plt.legend()
+        plt.xlabel(r'Epoch')
+        plt.ylabel('Loss')
+        plt.ylim([0, (1.3 * testing_loss[0])])
+        plt.savefig('C:/Users/cdupu/Documents/gnn_training_loss.png')
+
         print(f'[\tEpoch Loss:\n {testing_loss}')
 
 ###############################################
@@ -136,6 +145,6 @@ if __name__ == '__main__':
 
     pr = cProfile.Profile()
     pr.enable()
-    train(model, num_epochs=2, batch_size=64)
+    train(model, num_epochs=2, batch_size=64, plot_loss=True)
     pr.disable()
     pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
