@@ -139,12 +139,15 @@ if __name__ == '__main__':
     model = MsgModelDiff(num_in=5, num_out=2, num_message=100)
     model2 = GCN(5, 2)
 
-    # train(model, num_epochs=30, batch_size=32)
+    train(model, num_epochs=2, batch_size=32, plot_loss=True)
 
-    import snakeviz, cProfile
+    # import snakeviz, cProfile
+    #
+    # pr = cProfile.Profile()
+    # pr.enable()
+    # train(model, num_epochs=2, batch_size=64, plot_loss=True)
+    # pr.disable()
+    # pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
 
-    pr = cProfile.Profile()
-    pr.enable()
-    train(model, num_epochs=2, batch_size=64, plot_loss=True)
-    pr.disable()
-    pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
+    save_path = "C:/Users/cdupu/Documents/gnn_model.pt"
+    torch.save(model.state_dict(), save_path)
