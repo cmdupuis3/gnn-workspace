@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from surface_currents_prep import *
 from scenario              import Scenario
 from models                import GCN, MsgModelDiff
-from xr_to_networkx        import xr_to_graphs
+from xr_to_networkx        import xr_to_graphs, graphs_to_xr
 from preconvolve           import *
 
 sc1 = Scenario(['SSH'],             ['TAUX', 'TAUY'], ['U', 'V'], name = "derp")
@@ -117,6 +117,7 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
                 outs = model(features.x.float(), features.edge_index, features.weight)
                 loss_temp = loss_fn(outs, targets.x)
 
+        print(f'[\tEpoch Loss:\n {loss_temp}')
         testing_loss.append(loss_temp.item())
 
     if(plot_loss):
@@ -131,15 +132,14 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
         plt.ylim([0, (1.3 * testing_loss[0])])
         plt.savefig('C:/Users/cdupu/Documents/gnn_training_loss.png')
 
-        print(f'[\tEpoch Loss:\n {testing_loss}')
 
 ###############################################
 
 if __name__ == '__main__':
-    model = MsgModelDiff(num_in=5, num_out=2, num_message=100)
+    model = MsgModelDiff(5, [80,40,20,10], 2, num_message=100)
     model2 = GCN(5, 2)
 
-    train(model, num_epochs=2, batch_size=32, plot_loss=True)
+    train(model, num_epochs=30, batch_size=32, plot_loss=True)
 
     # import snakeviz, cProfile
     #

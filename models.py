@@ -37,8 +37,9 @@ class _MPD_in(MessagePassing):
                        Linear(message_channels, in_channels))
 
     def forward(self, x, edge_index, edge_attr):  # edge_attr
-        out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)  # edge_attr=edge_attr
+        out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)
         out += self.lin_1(x)  # Using += here is like a skip-connection, as opposed to = (according to Alex)
+        # print(out.shape)
         return out
 
     def message(self, x_i, x_j, edge_attr):  # edge_attr
@@ -47,22 +48,28 @@ class _MPD_in(MessagePassing):
 
 class MsgModelDiff(torch.nn.Module):
 
-    def __init__(self, num_in=1, num_out=1, num_message=200):
+    def __init__(self, num_in, num_channels, num_out, num_message=200):
         super().__init__()
-        self.layer_diff = _MPD_in(num_in, 20, num_message)
-        self.layer_h = _MPD_in(20, 20, num_message)
-        self.layer_out = _MPD_in(20, num_out, num_message)
-        self.relu = torch.nn.ReLU()
+        self.num_in = num_in
+        self.num_out = num_out
+        self.num_channels = num_channels
+        self.num_message = num_message
+
+        self.layer_1 = _MPD_in(self.num_in, self.num_channels[0], self.num_message)
+        self.layer_2 = _MPD_in(self.num_channels[0], self.num_channels[1], self.num_message)
+        self.layer_3 = _MPD_in(self.num_channels[1], self.num_channels[2], self.num_message)
+        self.layer_4 = _MPD_in(self.num_channels[2], self.num_channels[3], self.num_message)
+        self.layer_5 = _MPD_in(self.num_channels[3], self.num_out, self.num_message)
 
     def forward(self, features, edges, weights):
-        x = self.layer_diff(features, edges, weights)
-        x = self.relu(x)
-        x = self.layer_h(x, edges, weights)
-        x = self.relu(x)
-        x = self.layer_h(x, edges, weights)
-        x = self.relu(x)
-        x = self.layer_h(x, edges, weights)
-        x = self.relu(x)
-        x = self.layer_out(x, edges, weights)
+        x = self.layer_1(features, edges, weights)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_2(x, edges, weights)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_3(x, edges, weights)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_4(x, edges, weights)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_5(x, edges, weights)
         return x
 
