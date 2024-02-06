@@ -37,14 +37,12 @@ class _MPD_in(MessagePassing):
                        Linear(message_channels, in_channels))
 
     def forward(self, x, edge_index, edge_attr):  # edge_attr
-        print(x.shape)
         out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)
         out += self.lin_1(x)  # Using += here is like a skip-connection, as opposed to = (according to Alex)
         return out
 
     def message(self, x_i, x_j, edge_attr):  # edge_attr
         tmp = torch.cat([x_i, x_j], 1)  # edge_attr
-        print(self.lin_2(self.mlp(tmp) * (x_i - x_j)).shape)
         return self.lin_2(self.mlp(tmp) * (x_i - x_j))
 
 class MsgModelDiff(torch.nn.Module):
@@ -56,7 +54,8 @@ class MsgModelDiff(torch.nn.Module):
 
         self.layer_conv = _MPD_in(num_conv, num_conv_channels, num_message)
 
-        self.layer_1 = _MPD_in(num_in + num_conv_channels, num_channels[0], num_message)
+        self.layer_1 = _MPD_in(num_in - num_conv + num_conv_channels,
+                               num_channels[0], num_message)
         self.layer_2 = _MPD_in(num_channels[0], num_channels[1], num_message)
         self.layer_3 = _MPD_in(num_channels[1], num_channels[2], num_message)
         self.layer_4 = _MPD_in(num_channels[2], num_channels[3], num_message)
