@@ -114,14 +114,20 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
                 loss.backward()
                 optimizer.step()
 
+        num_batches = 0
+        epoch_loss = 0.0
         for c, f, t in batch_generator(testing_batch, kernel, batch_size):
             for convs, features, targets in zip(c, f, t):
 
                 outs = model(convs.x.float(),features.x.float(), features.edge_index, features.weight)
-                loss_temp = loss_fn(outs, targets.x)
+                batch_loss = loss_fn(outs, targets.x)
 
-        print(f'[\tEpoch Loss:\n {loss_temp}')
-        testing_loss.append(loss_temp.item())
+            num_batches = num_batches + 1
+            epoch_loss = epoch_loss + batch_loss
+            # print(f'[Batch Loss: {batch_loss}')
+
+        print(f'[\tEpoch Loss:\n {epoch_loss / num_batches}')
+        testing_loss.append(epoch_loss.item())
 
     if(plot_loss):
         plt.figure(figsize=(18, 5))
@@ -137,9 +143,9 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
 ###############################################
 
 if __name__ == '__main__':
-    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=80, num_message=100)
+    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=40, num_message=80)
 
-    train(model, num_epochs=30, batch_size=32, plot_loss=True)
+    train(model, num_epochs=30, batch_size=64, plot_loss=True)
 
     # import snakeviz, cProfile
     #
@@ -149,5 +155,5 @@ if __name__ == '__main__':
     # pr.disable()
     # pr.dump_stats("C:/Users/cdupu/Downloads/stats.prof")
 
-    save_path = "C:/Users/cdupu/Documents/gnn_model.pt"
+    save_path = "C:/Users/cdupu/Documents/gnn_model2.pt"
     torch.save(model.state_dict(), save_path)

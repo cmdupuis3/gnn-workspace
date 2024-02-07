@@ -32,9 +32,9 @@ class _MPD_in(MessagePassing):
         super().__init__(aggr='add')
         self.lin_1 = Linear(in_channels, out_channels)
         self.lin_2 = Linear(in_channels, out_channels)
-        self.mlp = Seq(Linear(2 * in_channels, message_channels),
+        self.mlp = Seq(Linear(2 * in_channels, 4 * in_channels),
                        ReLU(),
-                       Linear(message_channels, in_channels))
+                       Linear(4 * in_channels, in_channels))
 
     def forward(self, x, edge_index, edge_attr):  # edge_attr
         out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)
@@ -57,7 +57,7 @@ class MsgModelDiff(torch.nn.Module):
         self.layer_1 = _MPD_in(num_in - num_conv + num_conv_channels,
                                num_channels[0], num_message)
         self.layer_2 = _MPD_in(num_channels[0], num_channels[1], num_message)
-        self.layer_3 = _MPD_in(num_channels[1], num_channels[2], num_message)
+        self.layer_3 = _MPD_in(num_channels[1], num_out, num_message)
         self.layer_4 = _MPD_in(num_channels[2], num_channels[3], num_message)
         self.layer_5 = _MPD_in(num_channels[3], num_out, num_message)
 
@@ -72,9 +72,9 @@ class MsgModelDiff(torch.nn.Module):
         x = self.layer_2(x, edges, weights)
         x = torch.nn.ReLU()(x)
         x = self.layer_3(x, edges, weights)
-        x = torch.nn.ReLU()(x)
-        x = self.layer_4(x, edges, weights)
-        x = torch.nn.ReLU()(x)
-        x = self.layer_5(x, edges, weights)
+        # x = torch.nn.ReLU()(x)
+        # x = self.layer_4(x, edges, weights)
+        # x = torch.nn.ReLU()(x)
+        # x = self.layer_5(x, edges, weights)
         return x
 
