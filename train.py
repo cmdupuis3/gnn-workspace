@@ -126,7 +126,8 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
             epoch_loss = epoch_loss + batch_loss
             # print(f'[Batch Loss: {batch_loss}')
 
-        print(f'[\tEpoch Loss:\n {epoch_loss / num_batches}')
+        epoch_loss = epoch_loss / num_batches
+        print(f'[\tEpoch Loss:\n {epoch_loss}')
         testing_loss.append(epoch_loss.item())
 
     if(plot_loss):
@@ -136,14 +137,15 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
         plt.legend()
         plt.xlabel(r'Epoch')
         plt.ylabel('Loss')
-        plt.ylim([0, (1.3 * testing_loss[0])])
+        plt.ylim([0.1, (1.3 * testing_loss[0])])
+        plt.yscale("log")
         plt.savefig('C:/Users/cdupu/Documents/gnn_training_loss.png')
 
 
 ###############################################
 
 if __name__ == '__main__':
-    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=40, num_message=80)
+    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
 
     train(model, num_epochs=30, batch_size=64, plot_loss=True)
 

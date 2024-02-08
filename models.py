@@ -28,13 +28,13 @@ class GCN(torch.nn.Module):
         return F.log_softmax(x, dim=1)
 
 class _MPD_in(MessagePassing):
-    def __init__(self, in_channels, out_channels, message_channels):
+    def __init__(self, in_channels, out_channels, message_multiplier):
         super().__init__(aggr='add')
         self.lin_1 = Linear(in_channels, out_channels)
         self.lin_2 = Linear(in_channels, out_channels)
-        self.mlp = Seq(Linear(2 * in_channels, 4 * in_channels),
+        self.mlp = Seq(Linear(2 * in_channels, 2 * in_channels * message_multiplier),
                        ReLU(),
-                       Linear(4 * in_channels, in_channels))
+                       Linear(2 * in_channels * message_multiplier, in_channels))
 
     def forward(self, x, edge_index, edge_attr):  # edge_attr
         out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)
@@ -49,17 +49,17 @@ class MsgModelDiff(torch.nn.Module):
 
     def __init__(self, num_in, num_channels, num_out,
                  num_conv=0, num_conv_channels=0,
-                 num_message=200):
+                 message_multiplier=2):
         super().__init__()
 
-        self.layer_conv = _MPD_in(num_conv, num_conv_channels, num_message)
+        self.layer_conv = _MPD_in(num_conv, num_conv_channels, message_multiplier)
 
         self.layer_1 = _MPD_in(num_in - num_conv + num_conv_channels,
-                               num_channels[0], num_message)
-        self.layer_2 = _MPD_in(num_channels[0], num_channels[1], num_message)
-        self.layer_3 = _MPD_in(num_channels[1], num_out, num_message)
-        self.layer_4 = _MPD_in(num_channels[2], num_channels[3], num_message)
-        self.layer_5 = _MPD_in(num_channels[3], num_out, num_message)
+                               num_channels[0], message_multiplier)
+        self.layer_2 = _MPD_in(num_channels[0], num_channels[1], message_multiplier)
+        self.layer_3 = _MPD_in(num_channels[1], num_out, message_multiplier)
+        # self.layer_4 = _MPD_in(num_channels[2], num_channels[3], message_multiplier)
+        # self.layer_5 = _MPD_in(num_channels[3], num_out, message_multiplier)
 
 
     def forward(self, convs, features, edges, weights):
