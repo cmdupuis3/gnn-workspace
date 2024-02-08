@@ -6,6 +6,9 @@ import xarray as xr
 from preconvolve import *
 from scenario import Scenario
 
+
+sc5 = Scenario(['SSH', 'SST'], ['X', 'TAUX', 'TAUY'], ['U', 'V'], name = "herp")
+
 def _point_to_graph(mask: np.ndarray, i: int, j: int, imax: int, jmax: int, weight: float =1.0):
     edges = []
 
@@ -76,16 +79,9 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
     return vars_graph
 
 
-def _xr_ds_to_graph(batch, sc, kernel):
+def _xr_ds_to_graph(batch, sc):
     batch.load()
     mask = batch['mask']
-
-    # conv_f   = convolve(batch[sc.conv_var],  mask, kernel)
-    # features = contract(batch[sc.input_var], mask, 1)
-    # targets  = contract(batch[sc.target],    mask, 1)
-    # mask     = contract(batch[['mask']],     mask, 1)['mask'] # silly, but it works
-    #
-    # features = xr.merge([features, conv_f])
 
     conv_f_graph   = _graph_builder(mask.values, batch, sc.conv_var)
     features_graph = _graph_builder(mask.values, batch, sc.input_var)
@@ -93,8 +89,8 @@ def _xr_ds_to_graph(batch, sc, kernel):
 
     return conv_f_graph, features_graph, targets_graph
 
-def xr_to_graphs(batch, sc, kernel):
-    c, f, t = _xr_ds_to_graph(batch, sc, kernel)
+def xr_to_graphs(batch, sc):
+    c, f, t = _xr_ds_to_graph(batch, sc)
     csub = [c.subgraph(sub) for sub in nx.connected_components(c)]
     fsub = [f.subgraph(sub) for sub in nx.connected_components(f)]
     tsub = [t.subgraph(sub) for sub in nx.connected_components(t)]
