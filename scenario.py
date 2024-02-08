@@ -11,11 +11,11 @@ class Scenario:
 
 target = ['U', 'V']
 
-sc1  = Scenario(['SSH'],                     ['TAUX','TAUY'],     target, name='SSH_2ps_pointTAUXTAUY_3l_402010_nf80')
+sc1  = Scenario(['SSH'],                     ['TAUX','TAUY'],     target, name='derp')
 sc2  = Scenario(['SSH'],                     ['X'],               target, name='SSH_2ps_pointX_3l_402010_nf80')
 sc3  = Scenario(['SSH','SST'],               ['X'],               target, name='SSHSST_2ps_pointX_3l_402010_nf80')
 sc4  = Scenario(['SSH'],                     ['X','TAUX','TAUY'], target, name='SSH_2ps_pointXTAUXTAUY_3l_402010_nf80')
-sc5  = Scenario(['SSH','SST'],               ['X','TAUX','TAUY'], target, name='SSHSST_2ps_pointXTAUXTAUY_3l_402010_nf80')
+sc5  = Scenario(['SSH','SST'],               ['X','TAUX','TAUY'], target, name='herp')
 sc6  = Scenario(['SSH','X','Y','Z'],         ['TAUX','TAUY'],     target, name='SSHXYZ_2ps_pointTAUXTAUY_3l_402010_nf80')
 sc7  = Scenario(['SSH','X'],                 ['TAUX','TAUY'],     target, name='SSHX_2ps_pointTAUXTAUY_3l_402010_nf80')
 sc8  = Scenario(['SSH','SST','X','Y','Z'],   ['TAUX','TAUY'],     target, name='SSHSSTXYZ_2ps_pointTAUXTAUY_3l_402010_nf80')

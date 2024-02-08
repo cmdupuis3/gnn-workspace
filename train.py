@@ -8,29 +8,17 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
-from scenario              import Scenario
-from models                import GCN, MsgModelDiff
+from scenario              import Scenario, sc5
+from models                import MsgModelDiff
 from batching              import rolling_batcher, batch_generator
 
-sc1 = Scenario(['SSH'],             ['TAUX', 'TAUY'], ['U', 'V'], name = "derp")
-sc5 = Scenario(['SSH', 'SST'], ['X', 'TAUX', 'TAUY'], ['U', 'V'], name = "herp")
 
-###############################################
+def train(model, ds_training, ds_testing,
+          num_epochs=1, batch_size=32, plot_loss=False):
 
-ds_training = load_training_data(sc5)
-ds_training = just_the_data(ds_training)
-ds_training = select_from(ds_training)
-
-ds_testing = load_test_data(sc5)
-ds_testing = just_the_data(ds_testing)
-ds_testing = select_from(ds_testing)
-
-
-def train(model, num_epochs=1, batch_size=32, plot_loss=False):
     training_batch = rolling_batcher(ds_training, 9, 9)
-    testing_batch = rolling_batcher(ds_testing, 9, 9)
+    testing_batch  = rolling_batcher(ds_testing,  9, 9)
 
-    # Set up the loss and the optimizer
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
 
@@ -75,9 +63,18 @@ def train(model, num_epochs=1, batch_size=32, plot_loss=False):
 
 if __name__ == '__main__':
 
-    model = MsgModelDiff(5, [40,20,10,5], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
+    ds_training = load_training_data(sc5)
+    ds_training = just_the_data(ds_training)
+    ds_training = select_from(ds_training)
 
-    train(model, num_epochs=30, batch_size=64, plot_loss=True)
+    ds_testing = load_test_data(sc5)
+    ds_testing = just_the_data(ds_testing)
+    ds_testing = select_from(ds_testing)
+
+    model = MsgModelDiff(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
+
+    train(model, ds_training, ds_testing,
+          num_epochs=30, batch_size=64, plot_loss=True)
 
     save_path = "C:/Users/cdupu/Documents/gnn_model2.pt"
     torch.save(model.state_dict(), save_path)
