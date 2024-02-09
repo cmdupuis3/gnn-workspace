@@ -16,8 +16,8 @@ from batching              import rolling_batcher, batch_generator
 def train(model, ds_training, ds_testing,
           num_epochs=1, batch_size=32, plot_loss=False):
 
-    training_batch = rolling_batcher(ds_training, 9, 9)
-    testing_batch  = rolling_batcher(ds_testing,  9, 9)
+    training_batch = rolling_batcher(ds_training, 7, 7)
+    testing_batch  = rolling_batcher(ds_testing,  7, 7)
 
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)

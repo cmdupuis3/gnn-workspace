@@ -18,7 +18,7 @@ from xr_to_networkx        import xr_to_graphs, graphs_to_xr
 
 def predict(model, ds_predict, num_epochs=1, batch_size=32, plot_loss=False):
 
-    predict_batch = rolling_batcher(ds_predict, 9, 9)
+    predict_batch = rolling_batcher(ds_predict, 7, 7)
 
     loss_fn = nn.MSELoss()
 
@@ -36,7 +36,6 @@ if __name__ == '__main__':
     load_path = "C:/Users/cdupu/Documents/gnn_model2.pt"
     model = MsgModelDiff(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
     model.load_state_dict(torch.load(load_path))
-    print(model)
 
     ds_predict = load_predict_data(sc5)
     ds_predict = just_the_data(ds_predict)

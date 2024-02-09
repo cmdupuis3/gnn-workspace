@@ -10,7 +10,7 @@ from xr_to_networkx        import xr_to_graphs, graphs_to_xr
 
 sc5 = Scenario(['SSH', 'SST'], ['X', 'TAUX', 'TAUY'], ['U', 'V'], name = "herp")
 
-def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=1):
+def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=0):
 
     latlen = len(ds['nlat'])
     lonlen = len(ds['nlon'])
@@ -42,6 +42,8 @@ def ggen_subgs(batch_set):
             cpy = from_networkx(csub[j], group_node_attrs = sc5.conv_var)
             fpy = from_networkx(fsub[j], group_node_attrs = sc5.input_var)
             tpy = from_networkx(tsub[j], group_node_attrs = sc5.target)
+            # coords = fsub[j].nodes.items()
+            # print(coords)
             yield (cpy, fpy, tpy)
 
 
