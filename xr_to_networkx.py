@@ -67,9 +67,11 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
         for i in range(0, imax + 1):
             if mask[i, j]:
                 edges = _point_to_graph(mask, i, j, imax, jmax)
-                # TODO: double check c vs. fortran indexing conventions
                 vars_sub = vars[names].isel(nlon=i, nlat=j)
                 node_data = {vname: vars_sub[vname].values.item() for vname in vars_sub}
+
+                # TODO: (i,j) is the coordinates in this stencil; change this to
+                #       global coordinates
                 vars_graph.add_node((i, j), **node_data)
                 vars_graph.add_weighted_edges_from(edges, )
 

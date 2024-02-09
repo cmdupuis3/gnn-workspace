@@ -65,16 +65,28 @@ if __name__ == '__main__':
 
     ds_training = load_training_data(sc5)
     ds_training = just_the_data(ds_training)
-    ds_training = select_from(ds_training)
+    #ds_training = select_from(ds_training)
 
     ds_testing = load_test_data(sc5)
     ds_testing = just_the_data(ds_testing)
-    ds_testing = select_from(ds_testing)
+    #ds_testing = select_from(ds_testing)
+
+    # nlats = 7; nlons = 7; halo_size = 0
+    # latlen = len(ds_training['nlat'])
+    # lonlen = len(ds_training['nlon'])
+    # nlon_range = range(nlons,lonlen,nlons - 2*halo_size)
+    # nlat_range = range(nlats,latlen,nlats - 2*halo_size)
+    #
+    # ds_new = (ds_training
+    #                 .rolling({"nlat": nlats, "nlon": nlons})
+    #                 .construct({"nlat": "nlat_input", "nlon": "nlon_input"})[{'nlat': nlat_range, 'nlon': nlon_range}]
+    #           )
+    # print(ds_training['X'])
 
     model = MsgModelDiff(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
 
     train(model, ds_training, ds_testing,
-          num_epochs=30, batch_size=64, plot_loss=True)
+          num_epochs=30, batch_size=512, plot_loss=True)
 
     save_path = "C:/Users/cdupu/Documents/gnn_model2.pt"
     torch.save(model.state_dict(), save_path)
