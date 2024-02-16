@@ -17,6 +17,14 @@ def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=0):
     nlon_range = range(nlons,lonlen,nlons - 2*halo_size)
     nlat_range = range(nlats,latlen,nlats - 2*halo_size)
 
+    nlon_mat = xr.DataArray(ds['nlon'].data, dims=('nlon')).astype(int)
+    nlon_mat = nlon_mat.expand_dims(dim={'nlat': latlen})
+    nlat_mat = xr.DataArray(ds['nlat'].data, dims=('nlat')).astype(int)
+    nlat_mat = nlat_mat.expand_dims(dim={'nlon': lonlen})
+
+    ds['nlat_index'] = nlat_mat
+    ds['nlon_index'] = nlon_mat
+
     batch = (
         ds
         .rolling({"nlat": nlats, "nlon": nlons})
@@ -37,14 +45,15 @@ def ggen_subgs(batch_set):
     for i in range(len(batch_set['input_batch'])):
         batch = batch_set[{'input_batch':i}]
         csub, fsub, tsub = xr_to_graphs(batch, sc5)
+        # print(tsub[0].nodes)
+        # break
 
         for j in range(len(fsub)):
             cpy = from_networkx(csub[j], group_node_attrs = sc5.conv_var)
             fpy = from_networkx(fsub[j], group_node_attrs = sc5.input_var)
             tpy = from_networkx(tsub[j], group_node_attrs = sc5.target)
-            # coords = fsub[j].nodes.items()
-            # print(coords)
-            yield (cpy, fpy, tpy)
+            coords = list(fsub[j].nodes)
+            yield (cpy, fpy, tpy, coords)
 
 
 def batch_generator(batch, batch_size):
@@ -59,6 +68,7 @@ def batch_generator(batch, batch_size):
         convs = [batch[i][0] for i in range(batch_size)]
         feats = [batch[i][1] for i in range(batch_size)]
         targs = [batch[i][2] for i in range(batch_size)]
+        coords = [batch[i][3] for i in range(batch_size)]
 
-        yield convs, feats, targs
+        yield convs, feats, targs, coords
         n += 1

@@ -14,11 +14,11 @@ def _point_to_graph(mask: np.ndarray, i: int, j: int, imax: int, jmax: int, weig
 
     if not (j == jmax):
         if mask[i, j+1]:
-            edges.append([(i,j), (i,j+1), weight])
+            edges.append([(i, j), (i, j+1), weight])
 
     if not (i == imax):
-        if mask[i+1,j]:
-            edges.append([(i,j), (i+1,j), weight])
+        if mask[i+1, j]:
+            edges.append([(i, j), (i+1, j), weight])
 
     return edges
 
@@ -62,21 +62,31 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
     jmax = mask.shape[1] - 1
 
     vars_graph = nx.Graph()
+    edges = []
 
-    for j in range(0, jmax + 1):
-        for i in range(0, imax + 1):
+    for i in range(0, imax + 1):
+        for j in range(0, jmax + 1):
             if mask[i, j]:
-                edges = _point_to_graph(mask, i, j, imax, jmax)
                 vars_sub = vars[names].isel(nlon=i, nlat=j)
                 node_data = {vname: vars_sub[vname].values.item() for vname in vars_sub}
 
-                # TODO: (i,j) is the coordinates in this stencil; change this to
-                #       global coordinates
-                vars_graph.add_node((i, j), **node_data)
-                vars_graph.add_weighted_edges_from(edges, )
+                ipos = int(vars['nlat_index'][i,j])
+                jpos = int(vars['nlon_index'][i,j])
+
+                if not (j == jmax):
+                    if mask[i, j + 1]:
+                        edges.append([(ipos, jpos), (ipos, jpos + 1), 1.0])
+
+                if not (i == imax):
+                    if mask[i + 1, j]:
+                        edges.append([(ipos, jpos), (ipos + 1, jpos), 1.0])
+
+                vars_graph.add_node((ipos, jpos), **node_data)
 
                 # add self-loops
                 # vars_graph.add_edge((i,j), (i,j), weight=1.)
+
+    vars_graph.add_weighted_edges_from(edges, )
 
     return vars_graph
 

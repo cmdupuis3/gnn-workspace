@@ -24,7 +24,7 @@ def train(model, ds_training, ds_testing,
 
     testing_loss = []
     for epoch in range(num_epochs):
-        for c, f, t in batch_generator(training_batch, batch_size):
+        for c, f, t, _ in batch_generator(training_batch, batch_size):
             for convs, features, targets in zip(c, f, t):
 
                 optimizer.zero_grad()
@@ -35,7 +35,7 @@ def train(model, ds_training, ds_testing,
 
         num_batches = 0
         epoch_loss = 0.0
-        for c, f, t in batch_generator(testing_batch, batch_size):
+        for c, f, t, _ in batch_generator(testing_batch, batch_size):
             for convs, features, targets in zip(c, f, t):
 
                 outs = model(convs.x.float(),features.x.float(), features.edge_index, features.weight)
@@ -71,22 +71,10 @@ if __name__ == '__main__':
     ds_testing = just_the_data(ds_testing)
     #ds_testing = select_from(ds_testing)
 
-    # nlats = 7; nlons = 7; halo_size = 0
-    # latlen = len(ds_training['nlat'])
-    # lonlen = len(ds_training['nlon'])
-    # nlon_range = range(nlons,lonlen,nlons - 2*halo_size)
-    # nlat_range = range(nlats,latlen,nlats - 2*halo_size)
-    #
-    # ds_new = (ds_training
-    #                 .rolling({"nlat": nlats, "nlon": nlons})
-    #                 .construct({"nlat": "nlat_input", "nlon": "nlon_input"})[{'nlat': nlat_range, 'nlon': nlon_range}]
-    #           )
-    # print(ds_training['X'])
 
     model = MsgModelDiff(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
+    train(model, ds_training, ds_testing, num_epochs=1, batch_size=512, plot_loss=True)
 
-    train(model, ds_training, ds_testing,
-          num_epochs=30, batch_size=512, plot_loss=True)
-
-    save_path = "C:/Users/cdupu/Documents/gnn_model2.pt"
+    save_path = "C:/Users/cdupu/Documents/gnn_model3.pt"
     torch.save(model.state_dict(), save_path)
+

@@ -16,19 +16,41 @@ from models                import MsgModelDiff
 from xr_to_networkx        import xr_to_graphs, graphs_to_xr
 
 
-def predict(model, ds_predict, num_epochs=1, batch_size=32, plot_loss=False):
+def predict(model, ds_predict, batch_size=32):
 
     predict_batch = rolling_batcher(ds_predict, 7, 7)
 
+    U_pred = np.full(ds_predict['U'].shape, np.nan)
+    V_pred = np.full(ds_predict['V'].shape, np.nan)
+
     loss_fn = nn.MSELoss()
+    for c, f, t, co in batch_generator(predict_batch, batch_size):
+        for convs, features, targets, coords in zip(c, f, t, co):
 
-    for c, f, t in batch_generator(predict_batch, batch_size):
-        for convs, features, targets in zip(c, f, t):
+            predictions_graph = model(convs.x.float(), features.x.float(), features.edge_index, features.weight)
+            batch_loss = loss_fn(predictions_graph, targets.x)
 
-            predictions = model(convs.x.float(), features.x.float(), features.edge_index, features.weight)
-            batch_loss = loss_fn(predictions, targets.x)
+            for ct, node in enumerate(predictions_graph):
+                nlat, nlon = coords[ct]
+
+
+                U_pred[nlat, nlon] = node[0]
+                V_pred[nlat, nlon] = node[1]
+
+
+            # print(predictions[0])
+            # print(coords[0][0])
 
         print(f'[Batch Loss: {batch_loss}')
+
+
+    print(V_pred)
+
+
+    plt.figure(figsize=(8, 5))
+    plt.contourf(V_pred)
+    plt.savefig('C:/Users/cdupu/Documents/gnn_contourf.png')
+
 
 
 if __name__ == '__main__':
