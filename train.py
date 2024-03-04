@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
 from scenario              import Scenario, sc5
-from models                import MsgModelDiff
+from models                import MsgModelDiff, ModelLikeAnirbans
 from batching              import rolling_batcher, batch_generator
 
 
@@ -46,7 +46,7 @@ def train(model, ds_training, ds_testing,
             # print(f'[Batch Loss: {batch_loss}')
 
         epoch_loss = epoch_loss / num_batches
-        print(f'[\tEpoch Loss:\n {epoch_loss}')
+        print(f'[\tEpoch Loss: {epoch_loss}')
         testing_loss.append(epoch_loss.item())
 
     if(plot_loss):
@@ -65,16 +65,14 @@ if __name__ == '__main__':
 
     ds_training = load_training_data(sc5)
     ds_training = just_the_data(ds_training)
-    #ds_training = select_from(ds_training)
+    ds_training = select_from(ds_training)
 
     ds_testing = load_test_data(sc5)
     ds_testing = just_the_data(ds_testing)
-    #ds_testing = select_from(ds_testing)
+    ds_testing = select_from(ds_testing)
 
+    model = ModelLikeAnirbans(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
+    train(model, ds_training, ds_testing, num_epochs=30, batch_size=64, plot_loss=True)
 
-    model = MsgModelDiff(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
-    train(model, ds_training, ds_testing, num_epochs=1, batch_size=512, plot_loss=True)
-
-    save_path = "C:/Users/cdupu/Documents/gnn_model3.pt"
+    save_path = "C:/Users/cdupu/Documents/gnn_model4.pt"
     torch.save(model.state_dict(), save_path)
-

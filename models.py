@@ -78,3 +78,25 @@ class MsgModelDiff(torch.nn.Module):
         # x = self.layer_5(x, edges, weights)
         return x
 
+class ModelLikeAnirbans(torch.nn.Module):
+
+    def __init__(self, num_in, num_channels, num_out,
+                 num_conv=0, num_conv_channels=0,
+                 message_multiplier=2):
+        super().__init__()
+
+        self.layer_conv = _MPD_in(num_conv, num_conv_channels, message_multiplier)
+
+        self.layer_1 = Linear(num_in - num_conv + num_conv_channels, num_channels[0])
+        self.layer_2 = Linear(num_channels[0], num_channels[1])
+        self.layer_3 = Linear(num_channels[1], num_out)
+
+    def forward(self, convs, features, edges, weights):
+        preconv = self.layer_conv(convs, edges, weights)
+        x = torch.concat((preconv, features), 1)  # TODO: Check concat dimension
+        x = self.layer_1(x)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_2(x)
+        x = torch.nn.ReLU()(x)
+        x = self.layer_3(x)
+        return x
