@@ -1,9 +1,25 @@
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
 from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing, GCNConv
+
+
+def _get_halo_mask(coords):
+    ii, jj = [], []
+    [(ii.append(i), jj.append(j)) for i, j in coords]
+    imin = np.min(ii)
+    imax = np.max(ii)
+    jmin = np.min(jj)
+    jmax = np.max(jj)
+
+    imask = [(i == imin) | (i == imax) for i in ii]
+    jmask = [(j == jmin) | (j == jmax) for j in jj]
+
+    mask = [not (i | j) for i, j in zip(imask, jmask)]
+    return (mask)
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -62,7 +78,7 @@ class MsgModelDiff(torch.nn.Module):
         # self.layer_5 = _MPD_in(num_channels[3], num_out, message_multiplier)
 
 
-    def forward(self, convs, features, edges, weights):
+    def forward(self, convs, features, edges, weights, coords=None):
 
         preconv = self.layer_conv(convs, edges, weights)
         x = torch.concat((preconv, features), 1) # TODO: Check concat dimension
@@ -91,8 +107,10 @@ class ModelLikeAnirbans(torch.nn.Module):
         self.layer_2 = Linear(num_channels[0], num_channels[1])
         self.layer_3 = Linear(num_channels[1], num_out)
 
-    def forward(self, convs, features, edges, weights):
+    def forward(self, convs, features, edges, weights, coords):
         preconv = self.layer_conv(convs, edges, weights)
+        print(convs.shape) # need to get original coords (or a mask) to take a halo
+
         x = torch.concat((preconv, features), 1)  # TODO: Check concat dimension
         x = self.layer_1(x)
         x = torch.nn.ReLU()(x)
