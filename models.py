@@ -7,7 +7,10 @@ from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing, GCNConv
 
 
-def _get_halo_mask(coords):
+def get_halo_mask(coords):
+    """
+    Simple halo ATM; need to implement coastline halos
+    """
     ii, jj = [], []
     [(ii.append(i), jj.append(j)) for i, j in coords]
     imin = np.min(ii)
@@ -81,7 +84,7 @@ class MsgModelDiff(torch.nn.Module):
     def forward(self, convs, features, edges, weights, coords=None):
 
         preconv = self.layer_conv(convs, edges, weights)
-        x = torch.concat((preconv, features), 1) # TODO: Check concat dimension
+        x = torch.concat((features, preconv), 1) # TODO: Check concat dimension
 
         x = self.layer_1(x, edges, weights)
         x = torch.nn.ReLU()(x)
@@ -109,9 +112,14 @@ class ModelLikeAnirbans(torch.nn.Module):
 
     def forward(self, convs, features, edges, weights, coords):
         preconv = self.layer_conv(convs, edges, weights)
-        print(convs.shape) # need to get original coords (or a mask) to take a halo
+        grad_fn = preconv.grad_fn
 
-        x = torch.concat((preconv, features), 1)  # TODO: Check concat dimension
+        halo = get_halo_mask(coords)
+        preconv = [x for i, x in enumerate(preconv) if halo[i]]
+        preconv = torch.stack(preconv)
+        print(preconv.shape)
+
+        x = torch.concat((features, preconv), 1)  # TODO: Check concat dimension
         x = self.layer_1(x)
         x = torch.nn.ReLU()(x)
         x = self.layer_2(x)
