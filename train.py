@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
 from scenario              import Scenario, sc5
-from models                import MsgModelDiff, ModelLikeAnirbans
+from models                import MsgModelDiff, ModelLikeAnirbans, get_halo_mask
 from batching              import rolling_batcher, batch_generator
 
 
 def train(model, ds_training, ds_testing,
-          num_epochs=1, batch_size=32, plot_loss=False):
+          num_epochs=1, nbatches=58, batch_size=32, plot_loss=False):
 
     training_batch = rolling_batcher(ds_training, 7, 7)
     testing_batch  = rolling_batcher(ds_testing,  7, 7)
@@ -24,21 +24,34 @@ def train(model, ds_training, ds_testing,
 
     testing_loss = []
     for epoch in range(num_epochs):
-        for c, f, t, _ in batch_generator(training_batch, batch_size):
-            for convs, features, targets in zip(c, f, t):
+        for c, f, t, co in batch_generator(training_batch, batch_size, nbatches):
+            for convs, features, targets, coords in zip(c, f, t, co):
 
                 optimizer.zero_grad()
-                outs = model(convs.x.float(), features.x.float(), features.edge_index, features.weight)
-                loss = loss_fn(outs, targets.x)
+
+                # We have to find the edge halos also, because they are different.
+                print(features.edge_index)
+                print(features.weight.shape)
+
+                # <begin kludge> TODO: Delete this!
+                halo = get_halo_mask(coords)
+                featuresX = [x for i, x in enumerate(features.x) if halo[i]]
+                targetsX  = [x for i, x in enumerate(targets.x)  if halo[i]]
+                featuresX = torch.stack(featuresX)
+                targetsX  = torch.stack(targetsX)
+                # <end kludge>
+
+                outs = model(convs.x.float(), featuresX.float(), features.edge_index, features.weight, coords)
+                loss = loss_fn(outs, targetsX)
                 loss.backward()
                 optimizer.step()
 
         num_batches = 0
         epoch_loss = 0.0
-        for c, f, t, _ in batch_generator(testing_batch, batch_size):
-            for convs, features, targets in zip(c, f, t):
+        for c, f, t, co in batch_generator(testing_batch, batch_size):
+            for convs, features, targets, coords in zip(c, f, t, co):
 
-                outs = model(convs.x.float(),features.x.float(), features.edge_index, features.weight)
+                outs = model(convs.x.float(), features.x.float(), features.edge_index, features.weight, coords)
                 batch_loss = loss_fn(outs, targets.x)
 
             num_batches = num_batches + 1

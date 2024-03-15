@@ -66,22 +66,27 @@ def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.G
 
     for i in range(0, imax + 1):
         for j in range(0, jmax + 1):
+
+            # Find lat/lon mins and maxes here so we cover haloing corner cases
+            # when the graph doesn't cover the full range of either lats or lons.
+            # Need to add them as graph global attributes.
+
             if mask[i, j]:
                 vars_sub = vars[names].isel(nlon=i, nlat=j)
                 node_data = {vname: vars_sub[vname].values.item() for vname in vars_sub}
 
-                ipos = int(vars['nlat_index'][i,j])
-                jpos = int(vars['nlon_index'][i,j])
+                lat_position = int(vars['nlat_index'][i,j])
+                lon_position = int(vars['nlon_index'][i,j])
 
                 if not (j == jmax):
                     if mask[i, j + 1]:
-                        edges.append([(ipos, jpos), (ipos, jpos + 1), 1.0])
+                        edges.append([(lat_position, lon_position), (lat_position, lon_position + 1), 1.0])
 
                 if not (i == imax):
                     if mask[i + 1, j]:
-                        edges.append([(ipos, jpos), (ipos + 1, jpos), 1.0])
+                        edges.append([(lat_position, lon_position), (lat_position + 1, lon_position), 1.0])
 
-                vars_graph.add_node((ipos, jpos), **node_data)
+                vars_graph.add_node((lat_position, lon_position), **node_data)
 
                 # add self-loops
                 # vars_graph.add_edge((i,j), (i,j), weight=1.)

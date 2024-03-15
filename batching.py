@@ -38,6 +38,7 @@ def rolling_batcher(ds, nlats = 5, nlons = 5, halo_size=0):
     rnds = list(range(len(batch['input_batch'])))
     np.random.shuffle(rnds)
     batch = batch[{'input_batch':(rnds)}]
+
     return batch
 
 
@@ -56,14 +57,14 @@ def ggen_subgs(batch_set):
             yield (cpy, fpy, tpy, coords)
 
 
-def batch_generator(batch, batch_size):
+def batch_generator(batch, batch_size, nbatches):
     bgen = ggen_subgs(batch)
     b = (batch for batch in bgen)
     n = 0
     convs = list()
     feats = list()
     targs = list()
-    while n < 58:
+    while n < nbatches:
         batch = [next(b) for i in range(batch_size)]
         convs = [batch[i][0] for i in range(batch_size)]
         feats = [batch[i][1] for i in range(batch_size)]

@@ -21,7 +21,7 @@ def ez_plot(var, min, max, filename):
     plt.savefig(filename)
 
 
-def predict(model, ds_predict, batch_size=32):
+def predict(model, ds_predict, nbatches=58, batch_size=32):
 
     predict_batch = rolling_batcher(ds_predict, 7, 7)
 
@@ -29,7 +29,7 @@ def predict(model, ds_predict, batch_size=32):
     V_pred = np.full(ds_predict['V'].shape, np.nan)
 
     loss_fn = nn.MSELoss()
-    for c, f, t, co in batch_generator(predict_batch, batch_size):
+    for c, f, t, co in batch_generator(predict_batch, nbatches, batch_size):
         for convs, features, targets, coords in zip(c, f, t, co):
 
             predictions_graph = model(convs.x.float(), features.x.float(), features.edge_index, features.weight)

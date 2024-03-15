@@ -7,22 +7,24 @@ from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing, GCNConv
 
 
-def get_halo_mask(coords):
+def get_halo_mask(coords, lat_min, lat_max, lon_min, lon_max):
     """
     Simple halo ATM; need to implement coastline halos
     """
-    ii, jj = [], []
-    [(ii.append(i), jj.append(j)) for i, j in coords]
-    imin = np.min(ii)
-    imax = np.max(ii)
-    jmin = np.min(jj)
-    jmax = np.max(jj)
+    lat_indices, lon_indices = [], []
+    [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
+    lat_min = np.min(lat_indices)
+    lat_max = np.max(lat_indices)
+    lon_min = np.min(lon_indices)
+    lon_max = np.max(lon_indices)
 
-    imask = [(i == imin) | (i == imax) for i in ii]
-    jmask = [(j == jmin) | (j == jmax) for j in jj]
+    lat_mask = [(lat == lat_min) | (lat == lat_max) for lat in lat_indices]
+    lon_mask = [(lon == lon_min) | (lon == lon_max) for lon in lon_indices]
 
-    mask = [not (i | j) for i, j in zip(imask, jmask)]
+    mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
     return (mask)
+
+def get_halo_edge_mask(nlats, nlons):
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -117,7 +119,11 @@ class ModelLikeAnirbans(torch.nn.Module):
         halo = get_halo_mask(coords)
         preconv = [x for i, x in enumerate(preconv) if halo[i]]
         preconv = torch.stack(preconv)
-        print(preconv.shape)
+
+        # <begin kludge> TODO: Delete this!
+        features = [x for i, x in enumerate(features) if halo[i]]
+        features = torch.stack(features)
+        # <end kludge>
 
         x = torch.concat((features, preconv), 1)  # TODO: Check concat dimension
         x = self.layer_1(x)
