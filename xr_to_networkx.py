@@ -1,11 +1,11 @@
 
+from typing import List
 import numpy as np
 import networkx as nx
 import xarray as xr
 
 from preconvolve import *
 from scenario import Scenario
-
 
 sc5 = Scenario(['SSH', 'SST'], ['X', 'TAUX', 'TAUY'], ['U', 'V'], name = "herp")
 
@@ -57,7 +57,7 @@ def np_mask_to_graphs(mask):
     return [g.subgraph(sub) for sub in nx.connected_components(g)]
 
 
-def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: list[str]) -> nx.Graph:
+def _graph_builder(mask: np.ndarray, vars: xr.Dataset, names: List[str]) -> nx.Graph:
     imax = mask.shape[0] - 1
     jmax = mask.shape[1] - 1
 
