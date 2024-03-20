@@ -8,9 +8,11 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
-from scenario              import Scenario, sc5
-from models                import MsgModelDiff, ModelLikeAnirbans, get_halo_mask
-from batching              import rolling_batcher, batch_generator
+from scenario import Scenario, sc5
+from models import MsgModelDiff, ModelLikeAnirbans, StencilBounds, \
+                   get_halo_mask # , get_halo_edge_mask
+
+from batching import rolling_batcher, batch_generator
 
 
 def train(model, ds_training, ds_testing,
@@ -33,15 +35,20 @@ def train(model, ds_training, ds_testing,
                 print(features.edge_index)
                 print(features.weight.shape)
 
-                # <begin kludge> TODO: Delete this!
-                halo = get_halo_mask(coords)
+                lat_indices, lon_indices = [], []
+                [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
+                Bounds = StencilBounds(np.min(lat_indices),
+                                       np.max(lat_indices),
+                                       np.min(lon_indices),
+                                       np.max(lon_indices))
+
+                halo = get_halo_mask(lat_indices, lon_indices, Bounds)
                 featuresX = [x for i, x in enumerate(features.x) if halo[i]]
                 targetsX  = [x for i, x in enumerate(targets.x)  if halo[i]]
                 featuresX = torch.stack(featuresX)
                 targetsX  = torch.stack(targetsX)
-                # <end kludge>
 
-                outs = model(convs.x.float(), featuresX.float(), features.edge_index, features.weight, coords)
+                outs = model(convs.x.float(), featuresX.float(), features.edge_index, features.weight, halo)
                 loss = loss_fn(outs, targetsX)
                 loss.backward()
                 optimizer.step()

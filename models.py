@@ -6,25 +6,27 @@ import torch.nn.functional as F
 from torch.nn import Sequential as Seq, Linear, ReLU
 from torch_geometric.nn import MessagePassing, GCNConv
 
+from dataclasses import dataclass
 
-def get_halo_mask(coords, lat_min, lat_max, lon_min, lon_max):
+@dataclass
+class StencilBounds:
+    lat_min: int
+    lat_max: int
+    lon_min: int
+    lon_max: int
+
+def get_halo_mask(lat_indices, lon_indices, Bounds: StencilBounds):
     """
     Simple halo ATM; need to implement coastline halos
     """
-    lat_indices, lon_indices = [], []
-    [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
-    lat_min = np.min(lat_indices)
-    lat_max = np.max(lat_indices)
-    lon_min = np.min(lon_indices)
-    lon_max = np.max(lon_indices)
 
-    lat_mask = [(lat == lat_min) | (lat == lat_max) for lat in lat_indices]
-    lon_mask = [(lon == lon_min) | (lon == lon_max) for lon in lon_indices]
+    lat_mask = [(lat == Bounds.lat_min) | (lat == Bounds.lat_max) for lat in lat_indices]
+    lon_mask = [(lon == Bounds.lon_min) | (lon == Bounds.lon_max) for lon in lon_indices]
 
     mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
     return (mask)
 
-def get_halo_edge_mask(nlats, nlons):
+#def get_halo_edge_mask(nlats, nlons):
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -112,18 +114,13 @@ class ModelLikeAnirbans(torch.nn.Module):
         self.layer_2 = Linear(num_channels[0], num_channels[1])
         self.layer_3 = Linear(num_channels[1], num_out)
 
-    def forward(self, convs, features, edges, weights, coords):
-        preconv = self.layer_conv(convs, edges, weights)
+    def forward(self, convs, features, edges, weights, halo):
+
+        preconv = self.layer_conv(x=convs, edge_index=edges, edge_attr=weights)
         grad_fn = preconv.grad_fn
 
-        halo = get_halo_mask(coords)
         preconv = [x for i, x in enumerate(preconv) if halo[i]]
         preconv = torch.stack(preconv)
-
-        # <begin kludge> TODO: Delete this!
-        features = [x for i, x in enumerate(features) if halo[i]]
-        features = torch.stack(features)
-        # <end kludge>
 
         x = torch.concat((features, preconv), 1)  # TODO: Check concat dimension
         x = self.layer_1(x)
