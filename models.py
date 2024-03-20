@@ -60,7 +60,7 @@ class _MPD_in(MessagePassing):
                        Linear(2 * in_channels * message_multiplier, in_channels))
 
     def forward(self, x, edge_index, edge_attr):  # edge_attr
-        out = self.propagate(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        out = self.propagate(edge_index=edge_index, edge_attr=edge_attr, x=x)
         out += self.lin_1(x)  # Using += here is like a skip-connection, as opposed to = (according to Alex)
         return out
 
