@@ -15,7 +15,7 @@ class StencilBounds:
     lon_min: int
     lon_max: int
 
-def get_halo_mask(lat_indices, lon_indices, Bounds: StencilBounds):
+def _halo_mask_select(lat_indices, lon_indices, Bounds: StencilBounds):
     """
     Simple halo ATM; need to implement coastline halos
     """
@@ -25,6 +25,39 @@ def get_halo_mask(lat_indices, lon_indices, Bounds: StencilBounds):
 
     node_mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
     return (node_mask)
+
+def get_halo_mask(coords):
+    lat_indices, lon_indices = [], []
+    [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
+    Bounds = StencilBounds(np.min(lat_indices),
+                           np.max(lat_indices),
+                           np.min(lon_indices),
+                           np.max(lon_indices))
+
+    halo = _halo_mask_select(lat_indices, lon_indices, Bounds)
+    return halo
+
+
+def remove_halo(halo, features, targets):
+
+    featuresX = [x for i, x in enumerate(features.x) if halo[i]]
+    targetsX = [x for i, x in enumerate(targets.x) if halo[i]]
+    featuresX = torch.stack(featuresX)
+    targetsX = torch.stack(targetsX)
+
+    # We have to find the edge halos also, because they are different
+
+    halo_nodes = [i for i, e in enumerate(halo) if not e]
+    fet = torch.transpose(features.edge_index, 0, 1)
+    edge_halo = [(0 == halo_nodes.count(x)) & (0 == halo_nodes.count(y)) for x, y in fet]
+
+    edges = [x for i, x in enumerate(fet) if edge_halo[i]]
+    weights = [x for i, x in enumerate(features.weight) if edge_halo[i]]
+    edges = torch.stack(edges, 0)
+    weights = torch.stack(weights, 0)
+    edges = torch.transpose(edges, 0, 1)
+
+    return featuresX, targetsX, edges, weights
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):

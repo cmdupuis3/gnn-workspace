@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 
 from surface_currents_prep import *
 from scenario import Scenario, sc5
-from models import MsgModelDiff, ModelLikeAnirbans, StencilBounds, \
-                   get_halo_mask # , get_halo_edge_mask
+from models import MsgModelDiff, ModelLikeAnirbans, get_halo_mask, remove_halo
 
 from batching import rolling_batcher, batch_generator
+
+
 
 
 def train(model, ds_training, ds_testing,
@@ -29,36 +30,16 @@ def train(model, ds_training, ds_testing,
         for c, f, t, co in batch_generator(training_batch, batch_size, nbatches):
             for convs, features, targets, coords in zip(c, f, t, co):
 
+                # Need to find halos to remove them correctly
+
+                halo = get_halo_mask(coords)
+                features, targets, edges, weights = remove_halo(halo, features, edges)
+
+                # And now the model...
+
                 optimizer.zero_grad()
-
-                lat_indices, lon_indices = [], []
-                [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
-                Bounds = StencilBounds(np.min(lat_indices),
-                                       np.max(lat_indices),
-                                       np.min(lon_indices),
-                                       np.max(lon_indices))
-
-                halo = get_halo_mask(lat_indices, lon_indices, Bounds)
-                featuresX = [x for i, x in enumerate(features.x) if halo[i]]
-                targetsX  = [x for i, x in enumerate(targets.x)  if halo[i]]
-                featuresX = torch.stack(featuresX)
-                targetsX  = torch.stack(targetsX)
-
-                # We have to find the edge halos also, because they are different
-
-                halo_nodes = [i for i, e in enumerate(halo) if not e]
-                fet = torch.transpose(features.edge_index, 0, 1)
-                edge_halo = [(0 == halo_nodes.count(x)) & (0 == halo_nodes.count(y)) for x, y in fet]
-
-                edges   = [x for i, x in enumerate(fet) if edge_halo[i]]
-                weights = [x for i, x in enumerate(features.weight) if edge_halo[i]]
-                edges   = torch.stack(edges, 0)
-                weights = torch.stack(weights, 0)
-                edges   = torch.transpose(edges, 0, 1)
-
-
-                outs = model(convs.x.float(), featuresX.float(), edges, weights, halo)
-                loss = loss_fn(outs, targetsX)
+                outs = model(convs.x.float(), features.float(), edges, weights, halo)
+                loss = loss_fn(outs, targets)
                 loss.backward()
                 optimizer.step()
 
