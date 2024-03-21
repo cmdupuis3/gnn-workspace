@@ -47,18 +47,17 @@ def train(model, ds_training, ds_testing,
                 # We have to find the edge halos also, because they are different
 
                 halo_nodes = [i for i, e in enumerate(halo) if not e]
-                print(halo_nodes)
                 fet = torch.transpose(features.edge_index, 0, 1)
-                # need to unzip halo_nodes and test separately
-                edge_halo = [(0 == halo_nodes.count(x)) & (0 == halo_nodes.count(y)) for x, y in fet ]
-                print(edge_halo)
+                edge_halo = [(0 == halo_nodes.count(x)) & (0 == halo_nodes.count(y)) for x, y in fet]
 
-                edge_list = [x for i, x in enumerate(fet) if edge_halo[i]]
-                edge_list = torch.stack(edge_list, 0)
-                edge_list = torch.transpose(edge_list, 0, 1)
-                print(edge_list)
+                edges   = [x for i, x in enumerate(fet) if edge_halo[i]]
+                weights = [x for i, x in enumerate(features.weight) if edge_halo[i]]
+                edges   = torch.stack(edges, 0)
+                weights = torch.stack(weights, 0)
+                edges   = torch.transpose(edges, 0, 1)
 
-                outs = model(convs.x.float(), featuresX.float(), features.edge_index, features.weight, halo)
+
+                outs = model(convs.x.float(), featuresX.float(), edges, weights, halo)
                 loss = loss_fn(outs, targetsX)
                 loss.backward()
                 optimizer.step()
