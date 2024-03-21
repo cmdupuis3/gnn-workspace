@@ -33,7 +33,7 @@ def train(model, ds_training, ds_testing,
                 # Need to find halos to remove them correctly
 
                 halo = get_halo_mask(coords)
-                features, targets, edges, weights = remove_halo(halo, features, edges)
+                features, targets, edges, weights = remove_halo(halo, features, targets)
 
                 # And now the model...
 
