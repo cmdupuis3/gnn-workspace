@@ -31,10 +31,6 @@ def train(model, ds_training, ds_testing,
 
                 optimizer.zero_grad()
 
-                # We have to find the edge halos also, because they are different.
-                print(features.edge_index)
-                print(features.weight.shape)
-
                 lat_indices, lon_indices = [], []
                 [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
                 Bounds = StencilBounds(np.min(lat_indices),
@@ -47,6 +43,20 @@ def train(model, ds_training, ds_testing,
                 targetsX  = [x for i, x in enumerate(targets.x)  if halo[i]]
                 featuresX = torch.stack(featuresX)
                 targetsX  = torch.stack(targetsX)
+
+                # We have to find the edge halos also, because they are different
+
+                halo_nodes = [i for i, e in enumerate(halo) if not e]
+                print(halo_nodes)
+                fet = torch.transpose(features.edge_index, 0, 1)
+                # need to unzip halo_nodes and test separately
+                edge_halo = [(0 == halo_nodes.count(x)) & (0 == halo_nodes.count(y)) for x, y in fet ]
+                print(edge_halo)
+
+                edge_list = [x for i, x in enumerate(fet) if edge_halo[i]]
+                edge_list = torch.stack(edge_list, 0)
+                edge_list = torch.transpose(edge_list, 0, 1)
+                print(edge_list)
 
                 outs = model(convs.x.float(), featuresX.float(), features.edge_index, features.weight, halo)
                 loss = loss_fn(outs, targetsX)

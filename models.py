@@ -23,10 +23,8 @@ def get_halo_mask(lat_indices, lon_indices, Bounds: StencilBounds):
     lat_mask = [(lat == Bounds.lat_min) | (lat == Bounds.lat_max) for lat in lat_indices]
     lon_mask = [(lon == Bounds.lon_min) | (lon == Bounds.lon_max) for lon in lon_indices]
 
-    mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
-    return (mask)
-
-#def get_halo_edge_mask(nlats, nlons):
+    node_mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
+    return (node_mask)
 
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
