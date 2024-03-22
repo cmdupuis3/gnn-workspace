@@ -48,7 +48,10 @@ def train(model, ds_training, ds_testing,
         for c, f, t, co in batch_generator(testing_batch, batch_size):
             for convs, features, targets, coords in zip(c, f, t, co):
 
-                outs = model(convs.x.float(), features.x.float(), features.edge_index, features.weight, coords)
+                halo = get_halo_mask(coords)
+                features, targets, edges, weights = remove_halo(halo, features, targets)
+
+                outs = model(convs.x.float(), features.float(), edges, weights, halo)
                 batch_loss = loss_fn(outs, targets.x)
 
             num_batches = num_batches + 1
