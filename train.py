@@ -45,14 +45,14 @@ def train(model, ds_training, ds_testing,
 
         num_batches = 0
         epoch_loss = 0.0
-        for c, f, t, co in batch_generator(testing_batch, batch_size):
+        for c, f, t, co in batch_generator(testing_batch, batch_size, nbatches):
             for convs, features, targets, coords in zip(c, f, t, co):
 
                 halo = get_halo_mask(coords)
                 features, targets, edges, weights = remove_halo(halo, features, targets)
 
                 outs = model(convs.x.float(), features.float(), edges, weights, halo)
-                batch_loss = loss_fn(outs, targets.x)
+                batch_loss = loss_fn(outs, targets)
 
             num_batches = num_batches + 1
             epoch_loss = epoch_loss + batch_loss
@@ -87,5 +87,5 @@ if __name__ == '__main__':
     model = ModelLikeAnirbans(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
     train(model, ds_training, ds_testing, num_epochs=30, batch_size=64, plot_loss=True)
 
-    save_path = "C:/Users/cdupu/Documents/gnn_model4.pt"
+    save_path = "C:/Users/cdupu/Documents/gnn_model_A1.pt"
     torch.save(model.state_dict(), save_path)
