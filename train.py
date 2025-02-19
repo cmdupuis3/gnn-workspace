@@ -7,20 +7,17 @@ import torch.nn as nn
 
 import matplotlib.pyplot as plt
 
+from batching import rolling_batcher, batch_generator
 from surface_currents_prep import *
 from scenario import Scenario, sc5
 from models import MsgModelDiff, ModelLikeAnirbans, get_halo_mask, remove_halo
 
-from batching import rolling_batcher, batch_generator
 
-
-
-
-def train(model, ds_training, ds_testing,
+def train(model, ds_training, ds_testing, stencil_size=5, halo_size=0,
           num_epochs=1, nbatches=58, batch_size=32, plot_loss=False):
 
-    training_batch = rolling_batcher(ds_training, 7, 7)
-    testing_batch  = rolling_batcher(ds_testing,  7, 7)
+    training_batch = rolling_batcher(ds_training, stencil_size, stencil_size, halo_size)
+    testing_batch  = rolling_batcher(ds_testing,  stencil_size, stencil_size, halo_size)
 
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
@@ -45,10 +42,11 @@ def train(model, ds_training, ds_testing,
 
         num_batches = 0
         epoch_loss = 0.0
+        batch_loss = 0.0
         for c, f, t, co in batch_generator(testing_batch, batch_size, nbatches):
             for convs, features, targets, coords in zip(c, f, t, co):
 
-                halo = get_halo_mask(coords)
+                halo = get_halo_mask(coords, halo_size)
                 features, targets, edges, weights = remove_halo(halo, features, targets)
 
                 outs = model(convs.x.float(), features.float(), edges, weights, halo)
@@ -56,7 +54,7 @@ def train(model, ds_training, ds_testing,
 
             num_batches = num_batches + 1
             epoch_loss = epoch_loss + batch_loss
-            # print(f'[Batch Loss: {batch_loss}')
+            print(f'[Batch Loss: {batch_loss}')
 
         epoch_loss = epoch_loss / num_batches
         print(f'[\tEpoch Loss: {epoch_loss}')
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     ds_testing = select_from(ds_testing)
 
     model = ModelLikeAnirbans(5, [40,20,10], 2, num_conv=2, num_conv_channels=40, message_multiplier=2)
-    train(model, ds_training, ds_testing, num_epochs=30, batch_size=64, plot_loss=True)
+    train(model, ds_training, ds_testing, stencil_size=11, halo_size=2, num_epochs=4, batch_size=64, plot_loss=True)
 
-    save_path = "C:/Users/cdupu/Documents/gnn_model_A1.pt"
+    save_path = "C:/Users/cdupu/Documents/gnn_model_B.pt"
     torch.save(model.state_dict(), save_path)

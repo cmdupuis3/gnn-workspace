@@ -8,6 +8,7 @@ from torch_geometric.nn import MessagePassing, GCNConv
 
 from dataclasses import dataclass
 
+
 @dataclass
 class StencilBounds:
     lat_min: int
@@ -15,26 +16,26 @@ class StencilBounds:
     lon_min: int
     lon_max: int
 
-def _halo_mask_select(lat_indices, lon_indices, Bounds: StencilBounds):
-    """
-    Simple halo ATM; need to implement coastline halos
-    """
 
+def _halo_mask_select(lat_indices, lon_indices, Bounds: StencilBounds):
     lat_mask = [(lat == Bounds.lat_min) | (lat == Bounds.lat_max) for lat in lat_indices]
     lon_mask = [(lon == Bounds.lon_min) | (lon == Bounds.lon_max) for lon in lon_indices]
 
     node_mask = [not (lat | lon) for lat, lon in zip(lat_mask, lon_mask)]
     return (node_mask)
 
-def get_halo_mask(coords):
+
+def get_halo_mask(coords, halo_size=1):
     lat_indices, lon_indices = [], []
     [(lat_indices.append(lat), lon_indices.append(lon)) for lat, lon in coords]
-    Bounds = StencilBounds(np.min(lat_indices),
-                           np.max(lat_indices),
-                           np.min(lon_indices),
-                           np.max(lon_indices))
+    unique_lats = list(np.unique(lat_indices))
+    unique_lons = list(np.unique(lon_indices))
+    bounds = StencilBounds(unique_lats[halo_size],
+                           unique_lats[-halo_size],
+                           unique_lons[halo_size],
+                           unique_lons[-halo_size])
 
-    halo = _halo_mask_select(lat_indices, lon_indices, Bounds)
+    halo = _halo_mask_select(lat_indices, lon_indices, bounds)
     return halo
 
 
@@ -59,6 +60,7 @@ def remove_halo(halo, features, targets):
 
     return featuresX, targetsX, edges, weights
 
+
 class GCN(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -81,6 +83,7 @@ class GCN(torch.nn.Module):
 
         return F.log_softmax(x, dim=1)
 
+
 class _MPD_in(MessagePassing):
     def __init__(self, in_channels, out_channels, message_multiplier):
         super().__init__(aggr='add')
@@ -98,6 +101,7 @@ class _MPD_in(MessagePassing):
     def message(self, x_i, x_j, edge_attr):  # edge_attr
         tmp = torch.cat([x_i, x_j], 1)  # edge_attr
         return self.lin_2(self.mlp(tmp) * (x_i - x_j))
+
 
 class MsgModelDiff(torch.nn.Module):
 
@@ -131,6 +135,7 @@ class MsgModelDiff(torch.nn.Module):
         # x = torch.nn.ReLU()(x)
         # x = self.layer_5(x, edges, weights)
         return x
+
 
 class ModelLikeAnirbans(torch.nn.Module):
 
